@@ -1,8 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { initializeFirestore, doc, getDoc, setDoc, updateDoc, getDocFromServer } from "firebase/firestore";
+import { initializeFirestore, doc, getDoc, setDoc, updateDoc, getDocFromServer, setLogLevel } from "firebase/firestore";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
+
+// Suppress benign gRPC/network warning messages such as GrpcConnection 'Listen' stream disconnects on idle servers
+setLogLevel("error");
 import { UserData, UserProfile, SocialLink, ClickStats, CustomTheme } from "./src/types";
 
 // -------------------------------------------------------------
