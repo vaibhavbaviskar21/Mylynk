@@ -6,6 +6,7 @@ import Dashboard from "./components/Dashboard";
 import PublicProfile from "./components/PublicProfile";
 import { MyLynkLogo } from "./components/MyLynkLogo";
 import FooterModals from "./components/FooterModals";
+import { getApiUrl } from "./utils/api";
 import { motion, AnimatePresence } from "motion/react";
 
 export default function App() {
@@ -92,7 +93,7 @@ export default function App() {
         // Try load session from storage
         const cachedUser = sessionStorage.getItem("bio_user");
         if (cachedUser) {
-          const res = await fetch(`/api/user/${cachedUser}`);
+          const res = await fetch(getApiUrl(`/api/user/${cachedUser}`));
           if (res.ok) {
             const data = await res.json();
             setSessionUser(cachedUser);

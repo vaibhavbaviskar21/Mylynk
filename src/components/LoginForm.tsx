@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import * as LucideImport from "lucide-react";
 import { UserData } from "../types";
 import { MyLynkLogo } from "./MyLynkLogo";
+import { getApiUrl } from "../utils/api";
 
 interface LoginFormProps {
   onSuccess: (username: string, portfolio: UserData) => void;
@@ -41,7 +42,7 @@ export default function LoginForm({ onSuccess }: LoginFormProps) {
       const endpoint = isRegister ? "/api/auth/register" : "/api/auth/login";
       const payload = isRegister ? { username: cleanUsername, email: email.trim(), password } : { username: cleanUsername, password };
 
-      const res = await fetch(endpoint, {
+      const res = await fetch(getApiUrl(endpoint), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

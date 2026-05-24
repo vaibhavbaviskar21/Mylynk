@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import * as LucideImport from "lucide-react";
 import { UserData } from "../types";
 import LinkTreePreview from "./LinkTreePreview";
+import { getApiUrl } from "../utils/api";
 
 interface PublicProfileProps {
   username: string;
@@ -18,7 +19,7 @@ export default function PublicProfile({ username }: PublicProfileProps) {
         setLoading(true);
         setError(null);
 
-        const res = await fetch(`/api/user/${username}`);
+        const res = await fetch(getApiUrl(`/api/user/${username}`));
         if (!res.ok) {
           if (res.status === 404) {
             throw new Error(`The profile @${username} does not exist yet.`);
@@ -43,7 +44,7 @@ export default function PublicProfile({ username }: PublicProfileProps) {
   // Log link clicks to server-database
   const handleLinkClick = async (linkId: string) => {
     try {
-      await fetch(`/api/user/${username}/links/${linkId}/click`, {
+      await fetch(getApiUrl(`/api/user/${username}/links/${linkId}/click`), {
         method: "POST",
       });
     } catch (err) {

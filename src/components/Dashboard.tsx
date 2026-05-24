@@ -4,6 +4,7 @@ import { UserData, SocialLink, CustomTheme, UserProfile } from "../types";
 import { THEME_PRESETS, getEffectiveTheme } from "./ThemePresets";
 import LinkTreePreview, { renderIcon } from "./LinkTreePreview";
 import { MyLynkLogo } from "./MyLynkLogo";
+import { getApiUrl } from "../utils/api";
 
 interface DashboardProps {
   username: string;
@@ -127,7 +128,7 @@ export default function Dashboard({ username, initialData, onLogout }: Dashboard
       const reader = new FileReader();
       reader.onloadend = async () => {
         const base64data = reader.result as string;
-        const res = await fetch("/api/upload", {
+        const res = await fetch(getApiUrl("/api/upload"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -179,7 +180,7 @@ export default function Dashboard({ username, initialData, onLogout }: Dashboard
       const activeTheme = overrideThemeId || themeId;
       const activeCustom = overrideCustomTheme || customTheme;
 
-      const res = await fetch(`/api/user/${username}/profile`, {
+      const res = await fetch(getApiUrl(`/api/user/${username}/profile`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -208,7 +209,7 @@ export default function Dashboard({ username, initialData, onLogout }: Dashboard
   const handleSaveLinks = async (updatedLinks: SocialLink[]) => {
     setSavingLinks(true);
     try {
-      const res = await fetch(`/api/user/${username}/links`, {
+      const res = await fetch(getApiUrl(`/api/user/${username}/links`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ links: updatedLinks }),
@@ -231,7 +232,7 @@ export default function Dashboard({ username, initialData, onLogout }: Dashboard
     if (!newUrl || newUrl.trim().length < 5) return;
     setSuggestingIcon(true);
     try {
-      const res = await fetch("/api/ai/suggest-icon", {
+      const res = await fetch(getApiUrl("/api/ai/suggest-icon"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: newUrl }),
@@ -399,7 +400,7 @@ export default function Dashboard({ username, initialData, onLogout }: Dashboard
 
     setGeneratingTheme(true);
     try {
-      const res = await fetch("/api/ai/generate-theme", {
+      const res = await fetch(getApiUrl("/api/ai/generate-theme"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ keyword: aiThemePrompt.trim(), name: name }),
@@ -424,7 +425,7 @@ export default function Dashboard({ username, initialData, onLogout }: Dashboard
     setRecommendingPlacement(true);
     setAiPlacementTip("");
     try {
-      const res = await fetch("/api/ai/recommend-placement", {
+      const res = await fetch(getApiUrl("/api/ai/recommend-placement"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
