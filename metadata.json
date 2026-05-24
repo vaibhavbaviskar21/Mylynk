@@ -1,0 +1,6 @@
+{
+  "name": "mylynk",
+  "description": "Create, customize, and share a personal link page in minutes with live previews, AI-generated themes, auto-suggested icons, and click analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
