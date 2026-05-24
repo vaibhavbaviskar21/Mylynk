@@ -1,0 +1,43 @@
+{
+  "entities": {
+    "UserProfileData": {
+      "title": "User Profile and Links Data",
+      "description": "The complete profile, social links, stats, and auth details stored under a unique creator username",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Unique, lowercase alphanumeric identifying slug chosen by the creator"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The creator email registered"
+        },
+        "passwordHash": {
+          "type": "string",
+          "description": "Securely hashed password computed on save"
+        },
+        "profile": {
+          "type": "object",
+          "description": "Nested visual profile containing custom theme config and bio metrics"
+        },
+        "links": {
+          "type": "array",
+          "description": "Standard link entries or nested sublink coding profile groups"
+        },
+        "clicks": {
+          "type": "object",
+          "description": "Map mapping individual link identifiers to total clicks and date-level analytics"
+        }
+      },
+      "required": ["username", "email", "passwordHash", "profile", "links", "clicks"]
+    }
+  },
+  "firestore": {
+    "/users/{username}": {
+      "schema": "UserProfileData",
+      "description": "Stores scalable, persistent link-in-bio custom card profiles indexed by physical creator username"
+    }
+  }
+}

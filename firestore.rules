@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global safety net default catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Validates IDs to shield against poisoning
+    function isValidId(id) {
+      return id is string && id.size() >= 3 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_]+$');
+    }
+
+    // 2. Deeply secured users document gate
+    match /users/{username} {
+      // Public profiles are readable by anybody to load the creator card
+      allow get: if isValidId(username);
+      
+      // Prevent recursive list scraping attacks
+      allow list: if false;
+
+      // Ensure exact key and physical types of inputs
+      function isValidUser(data) {
+        return data.username is string 
+          && data.username == username
+          && data.email is string 
+          && data.email.size() <= 200
+          && data.passwordHash is string 
+          && data.passwordHash.size() <= 128
+          && data.profile is map
+          && data.links is list 
+          && data.links.size() <= 150
+          && data.clicks is map;
+      }
+
+      // Allow document creations only if schema complies perfectly
+      allow create: if isValidId(username) && isValidUser(request.resource.data);
+
+      // Allow updates to links, theme configurations, bio, and clicks
+      allow update: if isValidId(username) && isValidUser(request.resource.data);
+
+      // Block client deletes - profile deletions are not permitted by default
+      allow delete: if false;
+    }
+  }
+}

@@ -97,7 +97,7 @@ async function startServer() {
   });
 
   // Authentication: Register
-  app.post("/api/auth/register", (req, res) => {
+  app.post("/api/auth/register", async (req, res) => {
     const { username, email, password } = req.body;
     if (!username || !email || !password) {
       return res.status(400).json({ error: "All fields are required" });
@@ -108,11 +108,12 @@ async function startServer() {
       return res.status(400).json({ error: "Username must be at least 3 alphanumeric characters" });
     }
 
-    if (Database.isUsernameTaken(trimmedUser)) {
+    const isTaken = await Database.isUsernameTaken(trimmedUser);
+    if (isTaken) {
       return res.status(400).json({ error: "Username is already taken" });
     }
 
-    const portfolio = Database.registerUser(trimmedUser, email.trim(), password);
+    const portfolio = await Database.registerUser(trimmedUser, email.trim(), password);
     if (!portfolio) {
       return res.status(500).json({ error: "Failed to create user portfolio" });
     }
@@ -121,13 +122,13 @@ async function startServer() {
   });
 
   // Authentication: Login
-  app.post("/api/auth/login", (req, res) => {
+  app.post("/api/auth/login", async (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) {
       return res.status(400).json({ error: "Username and password are required" });
     }
 
-    const portfolio = Database.loginUser(username, password);
+    const portfolio = await Database.loginUser(username, password);
     if (!portfolio) {
       return res.status(401).json({ error: "Invalid username or password" });
     }
@@ -136,9 +137,9 @@ async function startServer() {
   });
 
   // Profile: Get Portfolio (Public & Private Editor both query this)
-  app.get("/api/user/:username", (req, res) => {
+  app.get("/api/user/:username", async (req, res) => {
     const { username } = req.params;
-    const portfolio = Database.getProfileByUsername(username);
+    const portfolio = await Database.getProfileByUsername(username);
     if (!portfolio) {
       return res.status(404).json({ error: "Profile not found" });
     }
@@ -147,11 +148,11 @@ async function startServer() {
   });
 
   // Profile: Update Info, Custom Theme & Fonts
-  app.post("/api/user/:username/profile", (req, res) => {
+  app.post("/api/user/:username/profile", async (req, res) => {
     const { username } = req.params;
     const { name, bio, avatarUrl, themeId, fontFamily, customTheme } = req.body;
 
-    const portfolio = Database.updateProfile(username, {
+    const portfolio = await Database.updateProfile(username, {
       name,
       bio,
       avatarUrl,
@@ -166,7 +167,7 @@ async function startServer() {
   });
 
   // Profile: Manage / Reorder / Toggle / Add Links
-  app.post("/api/user/:username/links", (req, res) => {
+  app.post("/api/user/:username/links", async (req, res) => {
     const { username } = req.params;
     const { links } = req.body;
 
@@ -174,7 +175,7 @@ async function startServer() {
       return res.status(400).json({ error: "Links must be an array" });
     }
 
-    const portfolio = Database.updateLinks(username, links);
+    const portfolio = await Database.updateLinks(username, links);
     if (!portfolio) {
       return res.status(404).json({ error: "User not found" });
     }
@@ -182,9 +183,9 @@ async function startServer() {
   });
 
   // Analytics: Track Link Click (Increments click counter, maps stats history)
-  app.post("/api/user/:username/links/:linkId/click", (req, res) => {
+  app.post("/api/user/:username/links/:linkId/click", async (req, res) => {
     const { username, linkId } = req.params;
-    const success = Database.trackLinkClick(username, linkId);
+    const success = await Database.trackLinkClick(username, linkId);
     if (!success) {
       return res.status(404).json({ error: "Link or profile not found" });
     }

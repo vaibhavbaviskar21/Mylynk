@@ -442,11 +442,16 @@ export default function LinkTreePreview({
       </div>
 
       {/* Powered by label context */}
-      <div className="mt-16 mb-20 text-center text-xs opacity-60 tracking-wider font-mono uppercase flex items-center gap-1.5 justify-center">
-        <LucideImport.Sparkle className="w-3.5 h-3.5 text-indigo-400" />
-        <a href="/" className="hover:text-indigo-400 hover:underline transition-colors cursor-pointer font-bold font-sans">
-          Powered by mylynk
-        </a>
+      <div className="mt-16 mb-20 flex flex-col items-center gap-2 select-none text-center">
+        <div className="text-xs opacity-60 tracking-wider font-mono uppercase flex items-center gap-1.5 justify-center">
+          <LucideImport.Sparkle className="w-3.5 h-3.5 text-indigo-400" />
+          <a href="/" className="hover:text-indigo-400 hover:underline transition-colors cursor-pointer font-bold font-sans">
+            Powered by mylynk
+          </a>
+        </div>
+        <div className="text-[10px] opacity-45 font-mono tracking-widest uppercase flex items-center gap-1 justify-center">
+          <span>Made with ❤️ by Vaibhav Baviskar</span>
+        </div>
       </div>
     </div>
   );

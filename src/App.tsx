@@ -5,6 +5,7 @@ import LoginForm from "./components/LoginForm";
 import Dashboard from "./components/Dashboard";
 import PublicProfile from "./components/PublicProfile";
 import { MyLynkLogo } from "./components/MyLynkLogo";
+import FooterModals from "./components/FooterModals";
 import { motion, AnimatePresence } from "motion/react";
 
 export default function App() {
@@ -12,6 +13,9 @@ export default function App() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [targetProfile, setTargetProfile] = useState<string | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
+  const [isDark, setIsDark] = useState(true);
+  const [modalType, setModalType] = useState<"privacy" | "terms" | "support" | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // States for the interactive "actual preview" and live infographic simulator
   const [activeProtoTheme, setActiveProtoTheme] = useState("aurora");
@@ -161,24 +165,56 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 flex flex-col justify-between font-sans relative overflow-x-hidden selection:bg-indigo-500/30 selection:text-indigo-200">
+    <div className={`min-h-screen flex flex-col justify-between font-sans relative overflow-x-hidden transition-colors duration-300 selection:bg-indigo-500/30 selection:text-indigo-250 ${
+      isDark ? "bg-neutral-950 text-neutral-100" : "bg-[#f8fafc] text-slate-800"
+    }`}>
       
       {/* Background ambient light shapes */}
-      <div className="absolute top-[-10%] left-[-15%] w-[50%] h-[40%] rounded-full bg-indigo-900/10 blur-[80px] pointer-events-none" />
-      <div className="absolute top-[40%] right-[-10%] w-[45%] h-[45%] rounded-full bg-pink-900/10 blur-[90px] pointer-events-none" />
+      {isDark && (
+        <>
+          <div className="absolute top-[-10%] left-[-15%] w-[50%] h-[40%] rounded-full bg-indigo-900/10 blur-[80px] pointer-events-none" />
+          <div className="absolute top-[40%] right-[-10%] w-[45%] h-[45%] rounded-full bg-pink-900/10 blur-[90px] pointer-events-none" />
+        </>
+      )}
 
       {/* Landing Header */}
-      <header className="px-6 py-5 max-w-7xl mx-auto w-full flex items-center justify-between border-b border-neutral-900 sticky top-0 bg-neutral-950/85 backdrop-blur-md z-40 shrink-0">
+      <header className={`px-6 py-4 max-w-7xl mx-auto w-full flex items-center justify-between border-b sticky top-0 backdrop-blur-md z-40 shrink-0 transition-colors duration-350 ${
+        isDark ? "bg-neutral-950/85 border-neutral-900 bg-neutral-950" : "bg-[#f8fafc]/85 border-slate-200/80 bg-[#f8fafc]"
+      }`}>
         <div className="flex items-center gap-3 select-none">
           <MyLynkLogo className="w-9 h-9" />
           <div>
-            <h1 className="text-base font-black text-white tracking-tight leading-none bg-gradient-to-r from-white via-neutral-100 to-neutral-400 bg-clip-text text-transparent">mylynk</h1>
-            <p className="text-[9px] text-indigo-400 font-mono mt-0.5 tracking-wider uppercase font-black">Workspace Engine</p>
+            <h1 className={`text-base font-black tracking-tight leading-none bg-gradient-to-r bg-clip-text text-transparent transition-colors duration-300 ${
+              isDark ? "from-white via-neutral-100 to-neutral-400" : "from-slate-900 via-slate-850 to-slate-700"
+            }`}>mylynk</h1>
+            <p className="text-[9px] text-indigo-500 font-mono mt-0.5 tracking-wider uppercase font-black">Workspace Engine</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Action links removed */}
+          {/* Light Mode / Dark Mode Toggle button */}
+          <button
+            onClick={() => setIsDark(!isDark)}
+            className={`px-3.5 py-1.8 rounded-xl border text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 hover:scale-[1.03] select-none ${
+              isDark 
+                ? "bg-neutral-900/60 hover:bg-neutral-850 border-neutral-800 text-neutral-300 hover:text-white shadow-md"
+                : "bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900 shadow-sm"
+            }`}
+            id="theme-toggle-button"
+            title="Toggle theme appearance"
+          >
+            {isDark ? (
+              <>
+                <LucideImport.Sun className="w-4 h-4 text-amber-400" />
+                <span className="hidden sm:inline">Light Mode</span>
+              </>
+            ) : (
+              <>
+                <LucideImport.Moon className="w-4 h-4 text-indigo-500" />
+                <span className="hidden sm:inline">Dark Mode</span>
+              </>
+            )}
+          </button>
         </div>
       </header>
 
@@ -188,36 +224,48 @@ export default function App() {
         {/* Left Side: Pitch and the ACTUAL interactive link preview infographic */}
         <div className="lg:col-span-7 space-y-10 selection:bg-neutral-800">
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-950/45 border border-indigo-900/50 text-[10px] font-bold text-indigo-300 uppercase tracking-widest leading-none">
+            <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest leading-none border transition-colors ${
+              isDark 
+                ? "bg-indigo-950/45 border-indigo-900/50 text-indigo-300"
+                : "bg-indigo-50 border-indigo-100 text-indigo-600"
+            }`}>
               <LucideImport.Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-pulse" />
               <span>Next-Gen Link-in-Bio Canvas</span>
             </div>
             
-            <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight text-white leading-tight font-sans">
+            <h2 className={`text-4xl md:text-5xl font-extrabold tracking-tight leading-tight font-sans transition-colors ${
+              isDark ? "text-white" : "text-slate-900"
+            }`}>
               Connect everything. <br />
-              Do it in <span className="bg-gradient-to-r from-indigo-400 via-pink-400 to-amber-300 bg-clip-text text-transparent font-black">one single link</span>.
+              Do it in <span className="bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-500 bg-clip-text text-transparent font-black">one single link</span>.
             </h2>
-            <p className="text-sm text-neutral-400 max-w-xl font-normal leading-relaxed">
+            <p className={`text-sm max-w-xl font-normal leading-relaxed transition-colors ${
+              isDark ? "text-neutral-400" : "text-slate-500"
+            }`}>
               Build a personalized landing page that holds your portfolios, projects, and custom CTA triggers. Optimize conversion in seconds with live, responsive design selectors and server-grade click infographics.
             </p>
           </div>
 
           {/* Interactive Smartphone Link Preview Playground ("Actual preview of the link") */}
-          <div className="p-6 rounded-3xl bg-neutral-900/40 border border-neutral-850 backdrop-blur-sm shadow-xl space-y-6">
+          <div className={`p-6 rounded-3xl border backdrop-blur-sm transition-all duration-300 space-y-6 ${
+            isDark ? "bg-neutral-900/40 border-neutral-850 shadow-xl" : "bg-white border-slate-200 shadow-[0_12px_40px_rgba(15,23,42,0.03)]"
+          }`}>
             
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-indigo-500 animate-ping"></span>
+                <h3 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${isDark ? "text-white" : "text-slate-900"}`}>
+                  <span className={`h-2 h-2 w-2 rounded-full bg-indigo-500 ${isDark ? "animate-ping" : ""}`}></span>
                   <span>Interactive Link Playground</span>
                 </h3>
-                <p className="text-[11px] text-neutral-500 mt-1">
+                <p className={`text-[11px] mt-1 ${isDark ? "text-neutral-500" : "text-slate-400"}`}>
                   Test-drive live layouts directly in this preview frame. Click on simulated channels to monitor live tracker events.
                 </p>
               </div>
 
               {/* Theme controllers selector */}
-              <div className="flex flex-wrap gap-1 bg-neutral-955 p-1 rounded-xl border border-neutral-800/80">
+              <div className={`flex flex-wrap gap-1 p-1 rounded-xl border ${
+                isDark ? "bg-neutral-955 border-neutral-800/80" : "bg-slate-50 border-slate-200"
+              }`}>
                 {PREVIEW_THEMES_MAPPING.map((theme) => (
                   <button
                     key={theme.id}
@@ -225,7 +273,9 @@ export default function App() {
                     className={`px-2.5 py-1 text-[10px] font-bold rounded-lg transition-all cursor-pointer ${
                       activeProtoTheme === theme.id
                         ? "bg-indigo-600 text-white shadow-md"
-                        : "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900"
+                        : isDark
+                          ? "text-neutral-500 hover:text-neutral-300 hover:bg-neutral-900"
+                          : "text-slate-500 hover:text-slate-800 hover:bg-slate-100"
                     }`}
                   >
                     {theme.name.split(" ")[0]}
@@ -239,7 +289,7 @@ export default function App() {
               
               {/* Smartphone Frame Mockup */}
               <div className="flex justify-center items-center">
-                <div className={`w-full max-w-[2700px] sm:max-w-[260px] aspect-[9/18] rounded-[2rem] border-4 border-neutral-800 transition-all duration-500 relative flex flex-col p-3 shadow-2xl relative overflow-hidden group select-none ring-4 ring-neutral-900/50 ${selectedThemeConfig.bgStyle}`}>
+                <div className={`w-full max-w-[270d0px] sm:max-w-[260px] aspect-[9/18] rounded-[2rem] border-4 border-neutral-800 transition-all duration-500 relative flex flex-col p-3 shadow-2xl overflow-hidden group select-none ring-4 ring-neutral-900/50 ${selectedThemeConfig.bgStyle}`}>
                   
                   {/* Speaker mesh pill */}
                   <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-14 h-3.5 bg-neutral-800 rounded-full flex items-center justify-center z-10">
@@ -258,15 +308,15 @@ export default function App() {
                     </div>
 
                     <div>
-                      <h4 className={`text-xs font-bold font-sans transition-colors duration-300 ${activeProtoTheme === 'sage' ? 'text-[#1c2a22]' : 'text-white'}`}>
+                      <h4 className={`text-xs font-bold font-sans transition-colors duration-300 ${activeProtoTheme === "sage" ? "text-[#1c2a22]" : "text-white"}`}>
                         Alex Creative
                       </h4>
-                      <p className={`text-[9px] font-mono mt-0.5 ${activeProtoTheme === 'sage' ? 'text-[#3f5f4f]' : 'text-indigo-400'}`}>
+                      <p className={`text-[9px] font-mono mt-0.5 ${activeProtoTheme === "sage" ? "text-[#3f5f4f]" : "text-indigo-400"}`}>
                         @alex_design
                       </p>
                     </div>
 
-                    <p className={`text-[8.5px] max-w-[190px] mx-auto tracking-wide font-medium leading-relaxed ${activeProtoTheme === 'sage' ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                    <p className={`text-[8.5px] max-w-[190px] mx-auto tracking-wide font-medium leading-relaxed ${activeProtoTheme === "sage" ? "text-neutral-600" : "text-neutral-400"}`}>
                       Digital architect building minimalist web tools & visual assets.
                     </p>
                   </div>
@@ -298,7 +348,7 @@ export default function App() {
 
                   {/* Simulated footer inside phone */}
                   <div className="pt-2 text-center select-none text-[7px] mt-auto">
-                    <span className={`opacity-60 uppercase font-bold tracking-widest ${activeProtoTheme === 'sage' ? 'text-neutral-600' : 'text-neutral-500'}`}>
+                    <span className={`opacity-60 uppercase font-bold tracking-widest ${activeProtoTheme === "sage" ? "text-neutral-600" : "text-neutral-500"}`}>
                       Powered by mylynk
                     </span>
                   </div>
@@ -307,42 +357,50 @@ export default function App() {
 
               {/* Live Analytics Infographic Card on the landing page */}
               <div className="flex flex-col justify-between space-y-4">
-                <div className="p-4 rounded-2xl bg-neutral-950 border border-neutral-850 flex flex-col justify-between flex-1 relative overflow-hidden">
+                <div className={`p-4 rounded-2xl border flex flex-col justify-between flex-1 relative overflow-hidden transition-all duration-300 ${
+                  isDark ? "bg-neutral-950 border-neutral-850" : "bg-slate-50 border-slate-200"
+                }`}>
                   
                   {/* Dynamic background trace */}
-                  <div className="absolute -bottom-8 -right-8 w-16 h-16 rounded-full bg-indigo-500/10 blur-xl pointer-events-none" />
+                  {isDark && (
+                    <div className="absolute -bottom-8 -right-8 w-16 h-16 rounded-full bg-indigo-500/10 blur-xl pointer-events-none" />
+                  )}
 
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-[8.5px] font-bold text-neutral-500 uppercase tracking-widest block">
+                      <span className={`text-[8.5px] font-bold uppercase tracking-widest block ${isDark ? "text-neutral-500" : "text-slate-400"}`}>
                         Live Analytics Tracker
                       </span>
-                      <h4 className="text-xs font-bold text-white mt-0.5 uppercase tracking-wider">
+                      <h4 className={`text-xs font-bold mt-0.5 uppercase tracking-wider ${isDark ? "text-white" : "text-slate-800"}`}>
                         Workspace Performance
                       </h4>
                     </div>
-                    <span className="px-2 py-0.5 rounded-full bg-emerald-900/30 text-emerald-400 border border-emerald-900-50 text-[9px] font-mono font-bold flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-900/35 text-emerald-400 border border-emerald-990-50 text-[9px] font-mono font-bold flex items-center gap-1">
                       <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
                       ACTIVATED
                     </span>
                   </div>
 
                   {/* Big stats number */}
-                  <div className="my-3 py-1.5 border-y border-neutral-900/80 flex items-baseline justify-between select-none">
+                  <div className={`my-3 py-1.5 border-y flex items-baseline justify-between select-none ${
+                    isDark ? "border-neutral-900/80" : "border-slate-200"
+                  }`}>
                     <div>
-                      <span className="text-xs text-neutral-500 block">Total Click Traffic</span>
-                      <strong className="text-2xl font-black text-white font-mono tracking-tight tracking-widest leading-none">
+                      <span className={`text-xs block ${isDark ? "text-neutral-500" : "text-slate-400"}`}>Total Click Traffic</span>
+                      <strong className={`text-2xl font-black font-mono tracking-widest leading-none ${isDark ? "text-white" : "text-slate-900"}`}>
                         {clickStats.toLocaleString()}
                       </strong>
                     </div>
                     <div className="text-right">
-                      <span className="text-[9px] text-neutral-500 block">Pulse Factor</span>
-                      <span className="text-xs text-indigo-400 font-bold font-mono">+12.4%</span>
+                      <span className={`text-[9px] block ${isDark ? "text-neutral-500" : "text-slate-400"}`}>Pulse Factor</span>
+                      <span className="text-xs text-indigo-500 font-extrabold font-mono">+12.4%</span>
                     </div>
                   </div>
 
                   {/* Interactive Clicks Log notification banner */}
-                  <div className="h-9 flex items-center justify-center rounded-xl bg-neutral-900/80 border border-neutral-850 px-2.5 overflow-hidden">
+                  <div className={`h-9 flex items-center justify-center rounded-xl border px-2.5 overflow-hidden transition-all duration-300 ${
+                    isDark ? "bg-neutral-900/80 border-neutral-850" : "bg-white border-slate-200 shadow-sm"
+                  }`}>
                     <AnimatePresence mode="wait">
                       {recentAction ? (
                         <motion.div
@@ -350,7 +408,7 @@ export default function App() {
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -10 }}
-                          className="text-[9px] text-white flex items-center gap-1.5 font-mono"
+                          className={`text-[9px] flex items-center gap-1.5 font-mono ${isDark ? "text-white" : "text-slate-800"}`}
                         >
                           <LucideImport.Activity className="w-3.5 h-3.5 text-pink-500 animate-pulse" />
                           <span>Event Captured: <strong>{recentAction}</strong></span>
@@ -360,9 +418,9 @@ export default function App() {
                           key="idle"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
-                          className="text-[9px] text-neutral-500 flex items-center gap-1.5"
+                          className={`text-[9px] flex items-center gap-1.5 ${isDark ? "text-neutral-500" : "text-slate-400"}`}
                         >
-                          <LucideImport.MousePointerClick className="w-3.5 h-3.5 text-neutral-600 animate-bounce" />
+                          <LucideImport.MousePointerClick className="w-3.5 h-3.5 text-neutral-500 animate-bounce" />
                           <span>Tap any link inside Mockup to log action</span>
                         </motion.div>
                       )}
@@ -370,21 +428,22 @@ export default function App() {
                   </div>
 
                   {/* Histogram bars infographics */}
-                  <div className="space-y-1.5 pt-3 border-t border-neutral-900/70">
+                  <div className="space-y-1.5 pt-3 border-t border-neutral-900/30">
                     <div className="flex justify-between items-center text-[8px] text-neutral-500">
                       <span>MONITOR PERFORMANCE</span>
                       <span>96% CONVERSION</span>
                     </div>
                     <div className="flex items-end justify-between gap-1.5 h-10 pt-1">
                       {[70, 85, 45, 90, 60, 110, 80, 130, 95].map((val, i) => {
-                        // Increase height of last bars dynamically when clicked
                         const increase = triggeredNodeId ? Math.floor(Math.random() * 15) : 0;
                         const heightVal = Math.min(val + increase, 140);
                         return (
-                          <div key={i} className="flex-1 bg-neutral-900 rounded-sm relative overflow-hidden h-full">
+                          <div key={i} className={`flex-1 rounded-sm relative overflow-hidden h-full ${
+                            isDark ? "bg-neutral-900" : "bg-slate-200"
+                          }`}>
                             <motion.div
                               className={`absolute bottom-0 left-0 w-full rounded-sm ${
-                                i === 7 ? "bg-indigo-500" : i === 8 ? "bg-pink-500" : "bg-neutral-800"
+                                i === 7 ? "bg-indigo-500" : i === 8 ? "bg-pink-500" : isDark ? "bg-neutral-800" : "bg-slate-350"
                               }`}
                               animate={{ height: `${(heightVal / 140) * 100}%` }}
                               transition={{ type: "spring", stiffness: 120, damping: 10 }}
@@ -399,18 +458,22 @@ export default function App() {
 
                 {/* Micro bento highlights list */}
                 <div className="grid grid-cols-2 gap-2.5">
-                  <div className="p-3 bg-neutral-950 border border-neutral-850 rounded-2xl">
-                    <span className="text-[8px] text-neutral-500 block uppercase font-bold">Theme Response</span>
-                    <p className="text-[10px] text-neutral-300 font-bold mt-1 line-clamp-1">{selectedThemeConfig.name}</p>
-                    <p className="text-[8px] text-neutral-500 mt-0.5 line-clamp-1">{selectedThemeConfig.tagline}</p>
+                  <div className={`p-3 border rounded-2xl transition-all duration-300 ${
+                    isDark ? "bg-neutral-950 border-neutral-850" : "bg-white border-slate-200 shadow-sm"
+                  }`}>
+                    <span className={`text-[8px] block uppercase font-bold ${isDark ? "text-neutral-500" : "text-slate-450"}`}>Theme Response</span>
+                    <p className={`text-[10px] font-bold mt-1 line-clamp-1 ${isDark ? "text-neutral-300" : "text-slate-800"}`}>{selectedThemeConfig.name}</p>
+                    <p className={`text-[8.5px] mt-0.5 line-clamp-1 ${isDark ? "text-neutral-500" : "text-slate-400"}`}>{selectedThemeConfig.tagline}</p>
                   </div>
-                  <div className="p-3 bg-neutral-950 border border-neutral-850 rounded-2xl">
-                    <span className="text-[8px] text-neutral-500 block uppercase font-bold">Workspace Status</span>
-                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 font-bold mt-1">
+                  <div className={`p-3 border rounded-2xl transition-all duration-300 ${
+                    isDark ? "bg-neutral-950 border-neutral-850" : "bg-white border-slate-200 shadow-sm"
+                  }`}>
+                    <span className={`text-[8px] block uppercase font-bold ${isDark ? "text-neutral-500" : "text-slate-455"}`}>Workspace Status</span>
+                    <span className="inline-flex items-center gap-1 text-[10px] text-emerald-500 font-black mt-1">
                       <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
                       Secure Sync
                     </span>
-                    <p className="text-[8px] text-neutral-500 mt-0.5 line-clamp-1">Offline state recovery active</p>
+                    <p className={`text-[8.5px] mt-0.5 line-clamp-1 ${isDark ? "text-neutral-500" : "text-slate-400"}`}>Offline recovery ready</p>
                   </div>
                 </div>
               </div>
@@ -421,25 +484,33 @@ export default function App() {
 
           {/* Core Feature Bento Highlights */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-            <div className="p-4 rounded-2xl bg-neutral-900/20 border border-neutral-900 flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-850 text-indigo-400 shrink-0">
+            <div className={`p-4 rounded-2xl border flex items-start gap-3 transition-all duration-300 ${
+              isDark ? "bg-neutral-900/20 border-neutral-900" : "bg-white border-slate-200 shadow-sm"
+            }`}>
+              <div className={`p-2 rounded-xl border shrink-0 ${
+                isDark ? "bg-neutral-950 border-neutral-850 text-indigo-400" : "bg-indigo-50 border-indigo-120 text-indigo-650"
+              }`}>
                 <LucideImport.Sliders className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">Visual Customizer</h4>
-                <p className="text-xs text-neutral-500 mt-1 font-medium leading-relaxed">
+                <h4 className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-white" : "text-slate-900"}`}>Visual Customizer</h4>
+                <p className={`text-xs mt-1 font-medium leading-relaxed ${isDark ? "text-neutral-500" : "text-slate-500"}`}>
                   Design layouts, fonts, color palettes, and buttons with immediate interactive sandbox preview.
                 </p>
               </div>
             </div>
 
-            <div className="p-4 rounded-2xl bg-neutral-900/20 border border-neutral-900 flex items-start gap-3">
-              <div className="p-2 rounded-xl bg-neutral-950 border border-neutral-855 text-indigo-400 shrink-0">
+            <div className={`p-4 rounded-2xl border flex items-start gap-3 transition-all duration-300 ${
+              isDark ? "bg-neutral-900/20 border-neutral-900" : "bg-white border-slate-200 shadow-sm"
+            }`}>
+              <div className={`p-2 rounded-xl border shrink-0 ${
+                isDark ? "bg-neutral-950 border-neutral-855 text-indigo-400" : "bg-indigo-50 border-indigo-120 text-indigo-650"
+              }`}>
                 <LucideImport.Sparkles className="w-5 h-5 text-indigo-400" />
               </div>
               <div>
-                <h4 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">Dynamic Brand QR</h4>
-                <p className="text-xs text-neutral-500 mt-1 font-medium leading-relaxed">
+                <h4 className={`text-xs font-bold uppercase tracking-wider ${isDark ? "text-white" : "text-slate-900"}`}>Dynamic Brand QR</h4>
+                <p className={`text-xs mt-1 font-medium leading-relaxed ${isDark ? "text-neutral-500" : "text-slate-500"}`}>
                   Generate beautiful custom-branded poster stands to print or share alongside custom CTA slogans inside the QR matrix.
                 </p>
               </div>
@@ -449,11 +520,11 @@ export default function App() {
         </div>
 
         {/* Right Side: Floating login authorization module */}
-        <div id="credentials-scroll-anchor" className="lg:col-span-5 flex justify-center lg:justify-end items-center sticky top-24 pt-4 lg:pt-0">
-          <div className="w-full relative group">
+        <div id="credentials-scroll-anchor" className="lg:col-span-12 xl:col-span-5 flex justify-center lg:justify-end items-center sticky top-24 pt-4 lg:pt-0">
+          <div className="w-full relative group max-w-md">
             
             {/* Ambient neon backdrop ring */}
-            <div className="absolute -inset-1 rounded-[2.2rem] bg-gradient-to-r from-indigo-500 via-pink-500 to-amber-400 opacity-20 blur-xl group-hover:opacity-30 transition-opacity duration-500 pointer-events-none" />
+            <div className="absolute -inset-1 rounded-[2.2rem] bg-gradient-to-r from-indigo-500 via-pink-400 to-amber-400 opacity-20 blur-xl group-hover:opacity-30 transition-opacity duration-500 pointer-events-none" />
             
             <div className="relative">
               <LoginForm onSuccess={handleLoginSuccess} />
@@ -463,20 +534,44 @@ export default function App() {
       </main>
 
       {/* Landing Footer */}
-      <footer className="border-t border-neutral-900/80 py-5 px-6 shrink-0 bg-neutral-950 select-none text-center sm:text-left relative z-10">
+      <footer className={`border-t py-6 px-6 shrink-0 select-none text-center sm:text-left relative z-10 transition-colors duration-300 ${
+        isDark ? "border-neutral-900 bg-neutral-950" : "border-slate-200/80 bg-white"
+      }`}>
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-[10px] text-neutral-500 font-sans tracking-wide">
-            &copy; {new Date().getFullYear()} mylynk. All rights reserved.
+            &copy; {new Date().getFullYear()} mylynk &bull; Made with ❤️ by Vaibhav Baviskar. All rights reserved.
           </p>
           <div className="flex gap-4 text-[10px] text-neutral-400 font-sans">
-            <span className="hover:text-white transition-colors cursor-pointer">Privacy Policy</span>
-            <span>&bull;</span>
-            <span className="hover:text-white transition-colors cursor-pointer">Terms of Service</span>
-            <span>&bull;</span>
-            <span className="text-indigo-400 hover:underline cursor-pointer">Support Care</span>
+            <span
+              onClick={() => { setModalType("privacy"); setIsModalOpen(true); }}
+              className={`transition-colors cursor-pointer font-bold ${
+                isDark ? "text-neutral-400 hover:text-white" : "text-slate-500 hover:text-indigo-600"
+              }`}
+            >
+              Privacy Policy
+            </span>
+            <span className={isDark ? "text-neutral-700" : "text-slate-300"}>&bull;</span>
+            <span
+              onClick={() => { setModalType("terms"); setIsModalOpen(true); }}
+              className={`transition-colors cursor-pointer font-bold ${
+                isDark ? "text-neutral-400 hover:text-white" : "text-slate-500 hover:text-indigo-600"
+              }`}
+            >
+              Terms of Service
+            </span>
+            <span className={isDark ? "text-neutral-700" : "text-slate-300"}>&bull;</span>
+            <span
+              onClick={() => { setModalType("support"); setIsModalOpen(true); }}
+              className="text-indigo-500 hover:underline cursor-pointer font-extrabold"
+            >
+              Support Care
+            </span>
           </div>
         </div>
       </footer>
+
+      {/* Populated documents & live ticket forms modal panel */}
+      <FooterModals isOpen={isModalOpen} type={modalType} onClose={() => setIsModalOpen(false)} isDark={isDark} />
     </div>
   );
 }

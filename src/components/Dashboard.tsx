@@ -2296,7 +2296,7 @@ export default function Dashboard({ username, initialData, onLogout }: Dashboard
 
           {/* Humble credit line bounds */}
           <footer className="mt-12 text-[10px] text-neutral-500 font-sans text-center shrink-0 border-t border-neutral-900/40 pt-4 select-none">
-            mylynk &copy; {new Date().getFullYear()} &bull; All systems active and secure.
+            mylynk &copy; {new Date().getFullYear()} &bull; Made with ❤️ by Vaibhav Baviskar. All systems active and secure.
           </footer>
         </div>
 

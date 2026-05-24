@@ -1,16 +1,99 @@
+import { initializeApp } from "firebase/app";
+import { initializeFirestore, doc, getDoc, setDoc, updateDoc, getDocFromServer } from "firebase/firestore";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
-import { DatabaseSchema, UserData, UserProfile, SocialLink, ClickStats, CustomTheme } from "./src/types";
+import { UserData, UserProfile, SocialLink, ClickStats, CustomTheme } from "./src/types";
 
-const DB_FILE = path.join(process.cwd(), "db.json");
+// -------------------------------------------------------------
+// FIREBASE INITIALIZATION & CONNECTION TEST
+// -------------------------------------------------------------
 
-// Helper to hash password using Node built-in crypto
+const configPath = path.join(process.cwd(), "firebase-applet-config.json");
+if (!fs.existsSync(configPath)) {
+  throw new Error("firebase-applet-config.json is missing! Run set_up_firebase tool first.");
+}
+
+const firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+const app = initializeApp(firebaseConfig);
+
+// REQUIRED CRITICAL LINE: Export db and auth configured correctly with long-polling to prevent gRPC streaming disconnect warnings on idle servers
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+}, firebaseConfig.firestoreDatabaseId);
+
+async function testConnection() {
+  try {
+    await getDocFromServer(doc(db, "test", "connection"));
+    console.log("[Firebase] Firestore Connection test succeeded!");
+  } catch (error) {
+    if (error instanceof Error && error.message.includes("offline")) {
+      console.error("[Firebase] Connection Warning: Please check if internet/client is offline.");
+    } else {
+      console.log("[Firebase] Firestore initial connection test completed (uninitialized container warning ignored).");
+    }
+  }
+}
+testConnection();
+
+// -------------------------------------------------------------
+// ERROR HANDLER CONFORMING TO SKILL SPECIFICATION
+// -------------------------------------------------------------
+
+enum OperationType {
+  CREATE = "create",
+  UPDATE = "update",
+  DELETE = "delete",
+  LIST = "list",
+  GET = "get",
+  WRITE = "write",
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+    providerInfo?: {
+      providerId?: string | null;
+      email?: string | null;
+    }[];
+  };
+}
+
+function handleFirestoreError(error: unknown, operationType: OperationType, pathStr: string | null): never {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: null,
+      email: null,
+      emailVerified: null,
+      isAnonymous: null,
+      tenantId: null,
+      providerInfo: []
+    },
+    operationType,
+    path: pathStr
+  };
+  console.error("Firestore Error: ", JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+// Helper to hash passwords securely
 export function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password + "link-in-bio-salt-1249").digest("hex");
 }
 
-const DEFAULT_LINKS = (userId: string): SocialLink[] => [
+// -------------------------------------------------------------
+// SEED DEFAULT VALUES (LAZY-PERSISTED)
+// -------------------------------------------------------------
+
+const DEFAULT_LINKS = (username: string): SocialLink[] => [
   {
     id: "link-1",
     title: "My Portfolio Website",
@@ -63,16 +146,13 @@ const DEFAULT_CLICKS = (): { [linkId: string]: ClickStats } => {
 
   linkIds.forEach((linkId, index) => {
     const dates: { [dateStr: string]: number } = {};
-    // Seed 7 days of clicks
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
       const dateStr = d.toISOString().split("T")[0];
-      // Random click pattern: some links performed better
       const baseClicks = (4 - index) * 5;
       dates[dateStr] = Math.max(0, Math.floor(Math.random() * 8) + baseClicks);
     }
-
     const totalClicks = Object.values(dates).reduce((a, b) => a + b, 0);
 
     stats[linkId] = {
@@ -85,43 +165,29 @@ const DEFAULT_CLICKS = (): { [linkId: string]: ClickStats } => {
   return stats;
 };
 
-// Initialize DB with seed records if empty
-function loadDatabase(): DatabaseSchema {
+// Seed Demo & Admin if missing from Firestore DB
+async function seedDefaultUserIfMissing(username: string, email: string, passwordPlain: string, customDesc: string, avatarUrl: string): Promise<void> {
+  const cleanUsername = username.toLowerCase().trim();
+  const pathStr = `users/${cleanUsername}`;
   try {
-    if (fs.existsSync(DB_FILE)) {
-      const content = fs.readFileSync(DB_FILE, "utf-8");
-      return JSON.parse(content);
-    }
-  } catch (error) {
-    console.error("Error loading database file, resetting:", error);
-  }
+    const docRef = doc(db, "users", cleanUsername);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) {
+      console.log(`Seeding missing profile for user: ${cleanUsername}`);
+      const hashed = hashPassword(passwordPlain);
+      const profileInfo = DEFAULT_PROFILE(cleanUsername);
+      profileInfo.name = username === "admin" ? "Alex Dev" : `${username.charAt(0).toUpperCase() + username.slice(1)} Portfolio`;
+      profileInfo.bio = customDesc;
+      profileInfo.avatarUrl = avatarUrl;
+      profileInfo.themeId = username === "admin" ? "forest" : "cosmic";
+      profileInfo.fontFamily = username === "admin" ? "mono" : "space";
 
-  // Schema Seed
-  const demoHashed = hashPassword("demo123");
-  const adminHashed = hashPassword("admin123");
-  const initialSchema: DatabaseSchema = {
-    users: {
-      demo: demoHashed,
-      admin: adminHashed,
-    },
-    userProfiles: {
-      demo: {
-        profile: DEFAULT_PROFILE("demo"),
-        links: DEFAULT_LINKS("demo"),
-        clicks: DEFAULT_CLICKS(),
-      },
-      admin: {
-        profile: {
-          id: "admin",
-          username: "admin",
-          name: "Alex Dev",
-          bio: "Senior full stack designer & content architect. Writing about AI & clean UI layouts.",
-          avatarUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200&h=200",
-          themeId: "forest",
-          createdAt: new Date().toISOString(),
-          fontFamily: "mono",
-        },
-        links: [
+      const userDataDoc = {
+        username: cleanUsername,
+        email: email,
+        passwordHash: hashed,
+        profile: profileInfo,
+        links: username === "admin" ? [
           {
             id: "admin-l1",
             title: "Join my Discord community",
@@ -146,8 +212,8 @@ function loadDatabase(): DatabaseSchema {
             active: true,
             order: 2,
           }
-        ],
-        clicks: {
+        ] : DEFAULT_LINKS(cleanUsername),
+        clicks: username === "admin" ? {
           "admin-l1": {
             linkId: "admin-l1",
             clicks: 120,
@@ -163,157 +229,250 @@ function loadDatabase(): DatabaseSchema {
             clicks: 45,
             dates: { "2026-05-20": 15, "2026-05-21": 20, "2026-05-22": 10 }
           }
-        }
-      }
+        } : DEFAULT_CLICKS()
+      };
+
+      await setDoc(docRef, userDataDoc);
     }
-  };
-
-  saveDatabase(initialSchema);
-  return initialSchema;
-}
-
-function saveDatabase(db: DatabaseSchema): void {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2), "utf-8");
   } catch (error) {
-    console.error("Error writing to database file:", error);
+    handleFirestoreError(error, OperationType.WRITE, pathStr);
   }
 }
 
-// Thread-safe / synchronous simple access patterns
+// -------------------------------------------------------------
+// LIVE CLOUD FIRESTORE PERSISTENT OPERATIONS
+// -------------------------------------------------------------
+
 export class Database {
-  static getProfileByUsername(username: string): UserData | null {
-    const db = loadDatabase();
-    const cleanUsername = username.toLowerCase().trim();
-    return db.userProfiles[cleanUsername] || null;
+  
+  // Lazy seed invocation on query load helper to ensure clean start
+  private static async ensureBaseSeeds(): Promise<void> {
+    await seedDefaultUserIfMissing(
+      "demo", 
+      "demo@mylynk.com", 
+      "demo123", 
+      "Welcome to my link-in-bio page! Creator, builder, and designer. Check out my content and projects below 🚀", 
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=200&h=200"
+    );
+    await seedDefaultUserIfMissing(
+      "admin", 
+      "admin@mylynk.com", 
+      "admin123", 
+      "Senior full stack designer & content architect. Writing about AI & clean UI layouts.", 
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=200&h=200"
+    );
   }
 
-  static isUsernameTaken(username: string): boolean {
-    const db = loadDatabase();
-    return !!db.users[username.toLowerCase().trim()];
-  }
-
-  static registerUser(username: string, email: string, passwordPlain: string): UserData | null {
-    const db = loadDatabase();
+  static async getProfileByUsername(username: string): Promise<UserData | null> {
+    await Database.ensureBaseSeeds();
     const cleanUsername = username.toLowerCase().trim();
-
-    if (db.users[cleanUsername]) {
-      return null;
+    const pathStr = `users/${cleanUsername}`;
+    try {
+      const docRef = doc(db, "users", cleanUsername);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) {
+        return null;
+      }
+      const data = snap.data();
+      return {
+        profile: data.profile,
+        links: data.links || [],
+        clicks: data.clicks || {},
+      } as UserData;
+    } catch (error) {
+      return handleFirestoreError(error, OperationType.GET, pathStr);
     }
+  }
 
-    // Save login credentials
-    db.users[cleanUsername] = hashPassword(passwordPlain);
+  static async isUsernameTaken(username: string): Promise<boolean> {
+    await Database.ensureBaseSeeds();
+    const cleanUsername = username.toLowerCase().trim();
+    const pathStr = `users/${cleanUsername}`;
+    try {
+      const docRef = doc(db, "users", cleanUsername);
+      const snap = await getDoc(docRef);
+      return snap.exists();
+    } catch (error) {
+      return handleFirestoreError(error, OperationType.GET, pathStr);
+    }
+  }
 
-    // Initial Portfolio Setup
-    const newPortfolio: UserData = {
-      profile: {
-        id: cleanUsername,
+  static async registerUser(username: string, email: string, passwordPlain: string): Promise<UserData | null> {
+    await Database.ensureBaseSeeds();
+    const cleanUsername = username.toLowerCase().trim();
+    const pathStr = `users/${cleanUsername}`;
+
+    try {
+      const docRef = doc(db, "users", cleanUsername);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        return null; // Username already taken
+      }
+
+      const hashed = hashPassword(passwordPlain);
+      const initialProfile = DEFAULT_PROFILE(cleanUsername);
+      initialProfile.name = username.charAt(0).toUpperCase() + username.slice(1);
+      initialProfile.bio = "Bio not set yet.";
+      initialProfile.avatarUrl = `https://api.dicebear.com/7.x/identicon/svg?seed=${cleanUsername}`;
+
+      const newPortfolio = {
         username: cleanUsername,
-        name: username.charAt(0).toUpperCase() + username.slice(1),
-        bio: "Bio not set yet.",
-        avatarUrl: `https://api.dicebear.com/7.x/identicon/svg?seed=${cleanUsername}`,
-        themeId: "cosmic",
-        createdAt: new Date().toISOString(),
-        fontFamily: "sans",
-      },
-      links: [],
-      clicks: {},
-    };
+        email: email.trim(),
+        passwordHash: hashed,
+        profile: initialProfile,
+        links: [],
+        clicks: {},
+      };
 
-    db.userProfiles[cleanUsername] = newPortfolio;
-    saveDatabase(db);
-    return newPortfolio;
+      await setDoc(docRef, newPortfolio);
+
+      return {
+        profile: initialProfile,
+        links: [],
+        clicks: {},
+      } as UserData;
+    } catch (error) {
+      return handleFirestoreError(error, OperationType.WRITE, pathStr);
+    }
   }
 
-  static loginUser(username: string, passwordPlain: string): UserData | null {
-    const db = loadDatabase();
+  static async loginUser(username: string, passwordPlain: string): Promise<UserData | null> {
+    await Database.ensureBaseSeeds();
     const cleanUsername = username.toLowerCase().trim();
+    const pathStr = `users/${cleanUsername}`;
 
-    if (!db.users[cleanUsername]) {
+    try {
+      const docRef = doc(db, "users", cleanUsername);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) {
+        return null;
+      }
+
+      const data = snap.data();
+      const hashed = hashPassword(passwordPlain);
+      if (data.passwordHash === hashed) {
+        return {
+          profile: data.profile,
+          links: data.links || [],
+          clicks: data.clicks || {},
+        } as UserData;
+      }
       return null;
+    } catch (error) {
+      return handleFirestoreError(error, OperationType.GET, pathStr);
     }
-
-    const hashed = hashPassword(passwordPlain);
-    if (db.users[cleanUsername] === hashed) {
-      return db.userProfiles[cleanUsername] || null;
-    }
-    return null;
   }
 
-  static updateProfile(username: string, updatedProfile: Partial<UserProfile>, customTheme?: CustomTheme): UserData | null {
-    const db = loadDatabase();
+  static async updateProfile(username: string, updatedProfile: Partial<UserProfile>, customTheme?: CustomTheme): Promise<UserData | null> {
+    await Database.ensureBaseSeeds();
     const cleanUsername = username.toLowerCase().trim();
+    const pathStr = `users/${cleanUsername}`;
 
-    if (!db.userProfiles[cleanUsername]) return null;
+    try {
+      const docRef = doc(db, "users", cleanUsername);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) return null;
 
-    db.userProfiles[cleanUsername].profile = {
-      ...db.userProfiles[cleanUsername].profile,
-      ...updatedProfile,
-    };
+      const data = snap.data();
+      const currentProfileInfo = data.profile || {};
+      
+      const newProfile = {
+        ...currentProfileInfo,
+        ...updatedProfile,
+      };
 
-    if (customTheme !== undefined) {
-      db.userProfiles[cleanUsername].profile.customTheme = customTheme;
+      if (customTheme !== undefined) {
+        newProfile.customTheme = customTheme;
+      }
+
+      await updateDoc(docRef, { profile: newProfile });
+
+      return {
+        profile: newProfile,
+        links: data.links || [],
+        clicks: data.clicks || {},
+      } as UserData;
+    } catch (error) {
+      return handleFirestoreError(error, OperationType.UPDATE, pathStr);
     }
-
-    saveDatabase(db);
-    return db.userProfiles[cleanUsername];
   }
 
-  static updateLinks(username: string, links: SocialLink[]): UserData | null {
-    const db = loadDatabase();
+  static async updateLinks(username: string, links: SocialLink[]): Promise<UserData | null> {
+    await Database.ensureBaseSeeds();
     const cleanUsername = username.toLowerCase().trim();
+    const pathStr = `users/${cleanUsername}`;
 
-    if (!db.userProfiles[cleanUsername]) return null;
+    try {
+      const docRef = doc(db, "users", cleanUsername);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) return null;
 
-    db.userProfiles[cleanUsername].links = links;
+      const data = snap.data();
+      const currentClicks = data.clicks || {};
+      const validLinkIds = new Set(links.map(l => l.id));
+      const newClicks: { [id: string]: ClickStats } = {};
 
-    // Filter clicks keys context if links were deleted
-    const validLinkIds = new Set(links.map(l => l.id));
-    const currentClicks = db.userProfiles[cleanUsername].clicks;
-    const newClicks: { [id: string]: ClickStats } = {};
+      validLinkIds.forEach(id => {
+        if (currentClicks[id]) {
+          newClicks[id] = currentClicks[id];
+        } else {
+          newClicks[id] = {
+            linkId: id,
+            clicks: 0,
+            dates: {}
+          };
+        }
+      });
 
-    validLinkIds.forEach(id => {
-      if (currentClicks[id]) {
-        newClicks[id] = currentClicks[id];
-      } else {
-        newClicks[id] = {
-          linkId: id,
+      await updateDoc(docRef, { 
+        links: links,
+        clicks: newClicks
+      });
+
+      return {
+        profile: data.profile,
+        links: links,
+        clicks: newClicks,
+      } as UserData;
+    } catch (error) {
+      return handleFirestoreError(error, OperationType.UPDATE, pathStr);
+    }
+  }
+
+  static async trackLinkClick(username: string, linkId: string): Promise<boolean> {
+    await Database.ensureBaseSeeds();
+    const cleanUsername = username.toLowerCase().trim();
+    const pathStr = `users/${cleanUsername}`;
+
+    try {
+      const docRef = doc(db, "users", cleanUsername);
+      const snap = await getDoc(docRef);
+      if (!snap.exists()) return false;
+
+      const data = snap.data();
+      const linksList: SocialLink[] = data.links || [];
+      const linkExists = linksList.some(l => l.id === linkId);
+      if (!linkExists) return false;
+
+      const clicksMap = data.clicks || {};
+      if (!clicksMap[linkId]) {
+        clicksMap[linkId] = {
+          linkId,
           clicks: 0,
           dates: {}
         };
       }
-    });
 
-    db.userProfiles[cleanUsername].clicks = newClicks;
-    saveDatabase(db);
-    return db.userProfiles[cleanUsername];
-  }
+      const linkClicks = clicksMap[linkId];
+      linkClicks.clicks += 1;
 
-  static trackLinkClick(username: string, linkId: string): boolean {
-    const db = loadDatabase();
-    const cleanUsername = username.toLowerCase().trim();
+      const todayStr = new Date().toISOString().split("T")[0];
+      linkClicks.dates[todayStr] = (linkClicks.dates[todayStr] || 0) + 1;
 
-    if (!db.userProfiles[cleanUsername]) return false;
-
-    const portfolio = db.userProfiles[cleanUsername];
-    const linkExists = portfolio.links.some(l => l.id === linkId);
-    if (!linkExists) return false;
-
-    if (!portfolio.clicks[linkId]) {
-      portfolio.clicks[linkId] = {
-        linkId,
-        clicks: 0,
-        dates: {}
-      };
+      await updateDoc(docRef, { clicks: clicksMap });
+      return true;
+    } catch (error) {
+      return handleFirestoreError(error, OperationType.UPDATE, pathStr);
     }
-
-    const linkClicks = portfolio.clicks[linkId];
-    linkClicks.clicks += 1;
-
-    const todayStr = new Date().toISOString().split("T")[0];
-    linkClicks.dates[todayStr] = (linkClicks.dates[todayStr] || 0) + 1;
-
-    saveDatabase(db);
-    return true;
   }
 }
